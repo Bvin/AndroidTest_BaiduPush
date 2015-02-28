@@ -34,6 +34,9 @@ public class BackgoundService extends Service {
 	public static final String SECRIT_KEY = "luFEGyoNPPWAfK5BRlM2MNsU5z0aT5Ib";
 	
 	private boolean isBaiduPushStarted;
+	private String userId;
+	private String channelId;
+	private String userNumber;
 	
 	BroadcastReceiver commReceiver = new BroadcastReceiver() {
 
@@ -62,13 +65,35 @@ public class BackgoundService extends Service {
 		public void onReceive(Context context, Intent intent) {
 			boolean noNetworkAvailable = intent.getBooleanExtra(ConnectivityManager.EXTRA_NO_CONNECTIVITY, false);
 			Log.e("网络变化", noNetworkAvailable?"没有网络":"有网");
-			if (!isBaiduPushStarted&&!noNetworkAvailable) {//尚未启动推动并且有网了
+			if (noNetworkAvailable) {//离线
+				issueNotificationWithNoConnective();
+			}else if (!isBaiduPushStarted) {//尚未启动推动并且有网了
 				launchBaiduPushService();//再绑定一次
+			}else {
+				//不知道断网后在联网，要不要再重新startWork。。。
 			}
 		}
 		
 	};
 	
+	/**离现时通知*/
+	private void issueNotificationWithNoConnective() {
+		NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(this)
+		.setTicker("推送服务离线")
+		.setSmallIcon(R.drawable.ic_launcher)
+		.setContentTitle("后台服务")
+		.setContentText(userNumber+"(离线)");
+		mBuilder.setStyle(newInboxStyle(userId, channelId));
+		Intent intent = new Intent(this, BackgoundService.class);
+		intent.putExtra("rebound", true);
+		mBuilder.addAction(0, "重绑", PendingIntent.getService(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT));
+		NotificationManager mNotifyMgr =  
+		        (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+		mNotifyMgr.notify(BACK_GROUND_NOTIFICATION_ID, mBuilder.build(
+				));
+	}
+	
+	/**调用startWork后回调onBind()方法后，绑定失败发送的通知*/
 	private void issueNotificationWithBindFaild(int errorCode) {
 		//icon、title、text三要素不可缺少？
 		NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(this)
@@ -85,11 +110,15 @@ public class BackgoundService extends Service {
 				));
 	}
 	
+	/**调用startWork后回调onBind()方法后，绑定成功发送的通知*/
 	private void issueNotificationWithBind(Context context,String userId,String channelId) {
 		NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(context);
 		mBuilder.setDefaults(NotificationCompat.DEFAULT_ALL);
 		mBuilder.setContentTitle("后台服务");
 		String userNumber = "No."+userId.substring(userId.length()-4);
+		this.userId = userId;
+		this.userNumber = userNumber;
+		this.channelId = channelId;
 		mBuilder.setContentText(userNumber);
 		mBuilder.setTicker("后台服务已绑定");
 		mBuilder.setAutoCancel(false);
