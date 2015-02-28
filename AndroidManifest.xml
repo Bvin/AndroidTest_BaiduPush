@@ -7,21 +7,28 @@
     <uses-sdk
         android:minSdkVersion="8"
         android:targetSdkVersion="21" />
-    
+    <!-- 闪光灯权限 -->
+    <uses-permission android:name="android.permission.FLASHLIGHT" />
+    <!-- 振动器权限 -->
+    <uses-permission android:name="android.permission.VIBRATE" />
     <!-- Push service 运行需要的权限 -->
-    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />  
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.WRITE_SETTINGS" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.ACCESS_DOWNLOAD_MANAGER"/>
+    <uses-permission android:name="android.permission.ACCESS_DOWNLOAD_MANAGER" />
     <uses-permission android:name="android.permission.DOWNLOAD_WITHOUT_NOTIFICATION" />
     <uses-permission android:name="android.permission.DISABLE_KEYGUARD" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
-     
+    
+    <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
+   
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
 
     <application
         android:name=".PushApplication"
@@ -29,9 +36,10 @@
         android:icon="@drawable/ic_launcher"
         android:label="@string/app_name"
         android:theme="@style/AppTheme" >
-        
-        <meta-data android:name="api_key" android:value="6VcQVy58uM1v2GQA0YBsupl7" />
-        
+        <meta-data
+            android:name="api_key"
+            android:value="6VcQVy58uM1v2GQA0YBsupl7" />
+
         <activity
             android:name=".MainActivity"
             android:label="@string/app_name" >
@@ -42,27 +50,29 @@
             </intent-filter>
         </activity>
         <!-- 自定义消息接收器 -->
-        <receiver android:name=".MessageReceiver">
+        <receiver android:name=".MessageReceiver" >
             <intent-filter>
+
                 <!-- 接收push消息 -->
                 <action android:name="com.baidu.android.pushservice.action.MESSAGE" />
                 <!-- 接收bind,unbind,fetch,delete等反馈消息 -->
                 <action android:name="com.baidu.android.pushservice.action.RECEIVE" />
             </intent-filter>
         </receiver>
-        
+
         <!-- 百度推送必须申明的组件，PushService配置 -->
-        
+
+
         <!-- 独立进程PushService后台服务申明 -->
         <service
             android:name="com.baidu.android.pushservice.PushService"
             android:exported="true"
             android:process=":bdservice_v1" >
-            <intent-filter >
-                <action android:name="com.baidu.android.pushservice.action.PUSH_SERVICE"/>
+            <intent-filter>
+                <action android:name="com.baidu.android.pushservice.action.PUSH_SERVICE" />
             </intent-filter>
         </service>
-		<!-- 用以接收系统消息以保证PushService正常运行 -->
+        <!-- 用以接收系统消息以保证PushService正常运行 -->
         <receiver
             android:name="com.baidu.android.pushservice.PushServiceReceiver"
             android:process=":bdservice_v1" >
@@ -79,20 +89,33 @@
             </intent-filter>
         </receiver>
         <!-- 用以接收客户发送方的各种请求 -->
-		<receiver
-		    android:name="com.baidu.android.pushservice.RegistrationReceiver"
-		    android:process=":bdservice_v1" >
-		    <intent-filter>
-		        <action android:name="com.baidu.android.pushservice.action.METHOD" />
-		        <action android:name="com.baidu.android.pushservice.action.BIND_SYNC" />
-		    </intent-filter>
-		    <intent-filter>
-		        <action android:name="android.intent.action.PACKAGE_REMOVED" />
+        <receiver
+            android:name="com.baidu.android.pushservice.RegistrationReceiver"
+            android:process=":bdservice_v1" >
+            <intent-filter>
+                <action android:name="com.baidu.android.pushservice.action.METHOD" />
+                <action android:name="com.baidu.android.pushservice.action.BIND_SYNC" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.PACKAGE_REMOVED" />
 
-		        <data android:scheme="package" />
-		    </intent-filter>
-		</receiver>
-		
+                <data android:scheme="package" />
+            </intent-filter>
+        </receiver>
+        <receiver
+            android:name=".BootReceiver"
+            android:enabled="true"
+            android:exported="true" >
+            <intent-filter>    
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>    
+            </intent-filter> 
+        </receiver>
+
+        <service
+            android:name=".BackgoundService"
+            android:enabled="true"
+            android:exported="true" >
+        </service>
     </application>
 
 </manifest>
