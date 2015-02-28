@@ -2,7 +2,6 @@ package cn.bvin.app.test.push;
 
 import android.os.AsyncTask;
 import android.os.Handler;
-import android.text.TextUtils;
 import android.util.Log;
 
 
@@ -11,11 +10,10 @@ public class SendMsgAsyncTask {
 	private String mMessage;
 	private Handler mHandler;
 	private MyAsyncTask mTask;
-	private String mUserId;
 	private OnSendScuessListener mListener;
 
 	public interface OnSendScuessListener {
-		void sendScuess();
+		void sendScuess(String msg);
 	}
 
 	public void setOnSendScuessListener(OnSendScuessListener listener) {
@@ -36,7 +34,6 @@ public class SendMsgAsyncTask {
 		// TODO Auto-generated constructor stub
 		mBaiduPush = PushApplication.getInstance().getBaiduPush();
 		mMessage = jsonMsg;
-		mUserId = useId;
 		mHandler = new Handler();
 	}
 
@@ -58,7 +55,7 @@ public class SendMsgAsyncTask {
 		@Override
 		protected String doInBackground(Void... message) {
 			String result = "";
-				result = mBaiduPush.PushTagMessage(mMessage, "TAG_GROUP");
+				result = mBaiduPush.PushMessage(mMessage);
 			return result;
 		}
 
@@ -71,7 +68,7 @@ public class SendMsgAsyncTask {
 				mHandler.postDelayed(reSend, 100);
 			} else {
 				if (mListener != null)
-					mListener.sendScuess();
+					mListener.sendScuess(mMessage);
 			}
 		}
 	}
