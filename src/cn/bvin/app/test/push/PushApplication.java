@@ -16,7 +16,7 @@ public class PushApplication extends FrontiaApplication{
 	public synchronized BaiduPush getBaiduPush() {
 		if (mBaiduPushServer == null)
 			mBaiduPushServer = new BaiduPush(BaiduPush.HTTP_METHOD_POST,
-					MainActivity.SECRIT_KEY, MainActivity.APP_KEY);
+					BackgoundService.SECRIT_KEY, BackgoundService.APP_KEY);
 		return mBaiduPushServer;
 
 	}
