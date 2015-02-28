@@ -64,7 +64,7 @@ public class RestApi extends TreeMap<String, String> {
 	public final static String MESSAGE_TYPE_MESSAGE = "0";
 	public final static String MESSAGE_TYPE_NOTIFY = "1";
 
-	public static String mApiKey = MainActivity.APP_KEY;
+	public static String mApiKey = BackgoundService.APP_KEY;
 
 	public RestApi(String method) {
 		put(_METHOD, method);
