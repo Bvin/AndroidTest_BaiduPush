@@ -1,5 +1,7 @@
 package cn.bvin.app.test.push;
 
+import java.io.IOException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -8,10 +10,16 @@ import java.util.Map;
 import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
+import android.content.Intent.ShortcutIconResource;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.NotificationCompat.Style;
 import android.support.v4.content.LocalBroadcastManager;
+import android.text.TextUtils;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -27,6 +35,7 @@ public class MessageReceiver extends FrontiaPushMessageReceiver{
 	private List<Map<String, String>> msgList = new ArrayList<Map<String, String>>();
 	
 	Gson gson;
+	int i;
 	
 	/**
 	 * 调用PushManager.startWork后，sdk将对pushserver发起绑定请求，
@@ -68,18 +77,27 @@ public class MessageReceiver extends FrontiaPushMessageReceiver{
 				.create();
 		try {
 			Message msg = mGson.fromJson(message, Message.class);
-			Log.e("MessageReceiver#onMessage.uid", msg.getUser_id()+"<=>"+PushApplication.getInstance().getUserId());
-			if (!msg.getUser_id().equals(PushApplication.getInstance().getUserId())) {
-				deliverMessage(arg0, "onMessage",msg);
-				notif(arg0, msg);
+			if (TextUtils.isEmpty(msg.getUser_id())) {
+				sendSimpleMessage(arg0, message);
+			}else {
+				Log.e("MessageReceiver#onMessage.uid", msg.getUser_id()+"<=>"+PushApplication.getInstance().getUserId());
+				if (!msg.getUser_id().equals(PushApplication.getInstance().getUserId())) {
+					deliverMessage(arg0, "onMessage",msg);
+				
+					notif(arg0, msg);
+				}
 			}
 			
 		} catch (JsonSyntaxException e) {
 			e.printStackTrace();
-			sendData(arg0, "onMessage","收到消息："+message+"\n");
-			Toast.makeText(arg0, "百度后台消息："+message, Toast.LENGTH_SHORT).show();
+			sendSimpleMessage(arg0, message);
 		}
 		
+	}
+	
+	private void sendSimpleMessage(Context arg0, String message) {
+		deliverSimpleMessage(arg0, "onMessage", message);
+		Toast.makeText(arg0, "百度后台消息："+message, Toast.LENGTH_SHORT).show();
 	}
 	
 	Style newInboxStyle(String userNumber,List<Map<String, String>> msgList) {
@@ -99,6 +117,22 @@ public class MessageReceiver extends FrontiaPushMessageReceiver{
         return inboxStyle;
     }
 
+
+	private void notif(Context context,String ticker,String text) {
+		NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(context);
+		mBuilder.setDefaults(NotificationCompat.DEFAULT_ALL);
+		mBuilder.setTicker(ticker);
+		mBuilder.setSmallIcon(R.drawable.ic_launcher);
+		mBuilder.setContentTitle(ticker);
+		mBuilder.setContentText(text);
+		NotificationManager mNotifyMgr =  
+		        (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+		// Builds the notification and issues it.
+		mNotifyMgr.notify(i++, mBuilder.build(
+				));                                                                     
+		//Toast.makeText(arg0, msg.getMessage(), Toast.LENGTH_SHORT).show();
+	}
+	
 	private void notif(Context context,Message msg ) {
 		long uid = Long.parseLong(msg.getUser_id());
 		String userNumber = "No."+msg.getUser_id().substring(msg.getUser_id().length()-4);
@@ -132,7 +166,13 @@ public class MessageReceiver extends FrontiaPushMessageReceiver{
 	private void deliverMessage(Context context,String key,Message msg) {
 		Intent intent = new Intent(ACTION_COMMUNICATION);
 		intent.putExtra(key, msg);
-		context.getApplicationContext().sendBroadcast(intent);
+		LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
+	}
+	
+	private void deliverSimpleMessage(Context context,String key,String msg) {
+		Intent intent = new Intent(ACTION_COMMUNICATION);
+		intent.putExtra(key, msg);
+		LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
 	}
 	
 	

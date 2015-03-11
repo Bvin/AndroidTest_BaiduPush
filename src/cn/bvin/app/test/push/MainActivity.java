@@ -42,13 +42,20 @@ public class MainActivity extends Activity implements SendMsgAsyncTask.OnSendScu
 				}
 				((TextView)findViewById(R.id.textView1)).append(bindString);
 			}else if (intent.hasExtra("onMessage")) {
-				Message msg = (Message) intent.getSerializableExtra("onMessage");
-				String userNumber = "(No."+msg.getUser_id().substring(msg.getUser_id().length()-4)+")";
-				Timestamp tt = new Timestamp(msg.getTime_samp());
-				String msgLine = "收到消息"+tt.getHours()+":"+tt.getMinutes()
-						+"："+userNumber+msg.getMessage()+"\n";
-				Log.e("onReceive", msgLine);
-				((TextView)findViewById(R.id.textView2)).append(msgLine);
+				String msgLine = "";
+				try {
+					Message msg = (Message) intent.getSerializableExtra("onMessage");
+					String userNumber = "(No."+msg.getUser_id().substring(msg.getUser_id().length()-4)+")";
+					Timestamp tt = new Timestamp(msg.getTime_samp());
+					msgLine = "收到消息"+tt.getHours()+":"+tt.getMinutes()
+							+"："+userNumber+msg.getMessage()+"\n";
+					Log.e("onReceive", msgLine);
+				} catch (Exception e) {
+					msgLine = "收到消息"+intent.getStringExtra("onMessage")+"\n";
+				}finally {
+					((TextView)findViewById(R.id.textView2)).append(msgLine);
+				}
+				
 			}else if (intent.hasExtra("onSetTags")) {
 				String info = intent.getStringExtra("onSetTags");
 				Log.e("onReceive", info);

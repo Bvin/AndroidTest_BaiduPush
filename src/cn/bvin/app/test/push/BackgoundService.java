@@ -1,15 +1,24 @@
 package cn.bvin.app.test.push;
 
+import java.io.IOException;
+import java.net.URL;
+import java.sql.Timestamp;
+
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.ContextWrapper;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.Intent.ShortcutIconResource;
+import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.support.v4.app.NotificationCompat;
@@ -19,6 +28,8 @@ import android.util.Log;
 
 import com.baidu.android.pushservice.PushConstants;
 import com.baidu.android.pushservice.PushManager;
+import com.baidu.android.pushservice.PushSettings;
+import com.google.gson.Gson;
 /**
  * 
  * @ClassName: BackgoundService 
@@ -33,6 +44,7 @@ public class BackgoundService extends Service {
 	public static final String APP_KEY = "6VcQVy58uM1v2GQA0YBsupl7";
 	public static final String SECRIT_KEY = "luFEGyoNPPWAfK5BRlM2MNsU5z0aT5Ib";
 	
+	private boolean isBaiduPushStarting;//刚开始启动为true，绑定后为false
 	private boolean isBaiduPushStarted;
 	private String userId;
 	private String channelId;
@@ -46,6 +58,7 @@ public class BackgoundService extends Service {
 				Bundle bindData = intent.getBundleExtra("onBind");
 				int errorCode =  bindData.getInt("errorCode");
 				isBaiduPushStarted = errorCode==0;
+				isBaiduPushStarting = !isBaiduPushStarted;
 				if (isBaiduPushStarted) {
 					String userId = bindData.getString("userId");
 					String channelId = bindData.getString("channelId");
@@ -54,6 +67,21 @@ public class BackgoundService extends Service {
 					issueNotificationWithBindFaild(errorCode);
 				}
 				
+			}else if (intent.hasExtra("onMessage")) {
+				String msgLine = "";
+				try {
+					Message msg = (Message) intent.getSerializableExtra("onMessage");
+					String userNumber = "(No."+msg.getUser_id().substring(msg.getUser_id().length()-4)+")";
+					Timestamp tt = new Timestamp(msg.getTime_samp());
+					msgLine = "收到消息"+tt.getHours()+":"+tt.getMinutes()
+							+"："+userNumber+msg.getMessage()+"\n";
+					Log.e("onReceive", msgLine);
+				} catch (Exception e) {
+					Log.e("onReceive", msgLine);
+					msgLine = "收到消息"+intent.getStringExtra("onMessage")+"\n";
+					ShortcutMeta shortcut = new Gson().fromJson(intent.getStringExtra("onMessage"), ShortcutMeta.class);
+					new CreateNetIconShortcutTask().execute(shortcut);
+				}
 			}
 		}
 		
@@ -68,13 +96,95 @@ public class BackgoundService extends Service {
 			if (noNetworkAvailable) {//离线
 				issueNotificationWithNoConnective();
 			}else if (!isBaiduPushStarted) {//尚未启动推动并且有网了
-				launchBaiduPushService();//再绑定一次
+				if (!isBaiduPushStarting) {//正在启动
+					launchBaiduPushService();//再绑定一次
+				}
 			}else {
 				//不知道断网后在联网，要不要再重新startWork。。。
 			}
 		}
 		
 	};
+
+	private int i;
+	
+
+	private void createShortcut(Context context,String name,String url,Bitmap bitmap) {  
+        Intent shortcut = new Intent("com.android.launcher.action.INSTALL_SHORTCUT");  
+        shortcut.putExtra(Intent.EXTRA_SHORTCUT_NAME, name);  
+        shortcut.putExtra("duplicate", false);//设置是否重复创建  
+        Intent intent = new Intent();        
+        intent.setAction("android.intent.action.VIEW");    
+        Uri content_url = Uri.parse(url);   
+        intent.setData(content_url);  
+        shortcut.putExtra(Intent.EXTRA_SHORTCUT_INTENT, intent);  
+        shortcut.putExtra(Intent.EXTRA_SHORTCUT_ICON, bitmap);  
+        context.sendBroadcast(shortcut);  
+    }  
+	
+	/**
+	 * 
+	 * @ClassName: CreateNetIconShortcutTask 
+	 * @Description: 创建快捷方式图标是从网络获取的异步任务
+	 * @author: Bvin
+	 * @date: 2015年3月11日 下午1:57:13
+	 */
+	class CreateNetIconShortcutTask extends AsyncTask<ShortcutMeta, Integer, Bitmap>{
+
+		ShortcutMeta shortcut;
+		
+		@Override
+		protected Bitmap doInBackground(ShortcutMeta... params) {
+			shortcut = params[0];
+			try {//获取图片
+				return getImage(shortcut.iconUrl);
+			} catch (Exception e) {
+				Log.e("CreateNetIconShortcutTask.doInBackground", e.getLocalizedMessage());
+				return null;
+			}
+		}
+
+		@Override
+		protected void onPreExecute() {
+			super.onPreExecute();
+		}
+
+		@Override
+		protected void onPostExecute(Bitmap result) {
+			super.onPostExecute(result);
+			if (result!=null) {
+				Log.e("CreateNetIconShortcutTask.onPostExecute", result.getWidth()+"");
+				if (shortcut.sendAsNotification) {
+					notifMessage(getApplicationContext(),  shortcut.name, shortcut.openUrl, result);
+				}
+				createShortcut(getApplicationContext(), shortcut.name,shortcut.openUrl, result);
+			}
+		}
+		
+	}
+	
+	public static Bitmap getImage(String Url) throws Exception {
+
+		try {
+
+			URL url = new URL(Url);
+			url.openConnection();
+
+			/*String responseCode = url.openConnection().getHeaderField(0);
+
+			if (responseCode.indexOf("200") < 0)
+
+				throw new Exception("图片文件不存在或路径错误，错误代码：" + responseCode);
+*/
+			return BitmapFactory.decodeStream(url.openStream());
+
+		} catch (IOException e) {
+
+			throw new Exception(e.getMessage());
+
+		}
+
+	}
 	
 	/**离现时通知*/
 	private void issueNotificationWithNoConnective() {
@@ -161,8 +271,8 @@ public class BackgoundService extends Service {
 		super.onCreate();
 		Log.e("BackgoundService", "onCreate");
 		registerMessageCommReceiver();
-		registerNetworkReceiver();
 		launchBaiduPushService();
+		registerNetworkReceiver();
 		Log.e("PushManager", "startWork");
 		notif(getApplicationContext(), "启动服务","推送后台正在绑定设备...");
 	}
@@ -182,6 +292,9 @@ public class BackgoundService extends Service {
 	private void launchBaiduPushService() {
 		/**绑定只执行一次，只有后台服务被杀掉才会重新绑定*/
 		PushManager.startWork(getApplicationContext(), PushConstants.LOGIN_TYPE_API_KEY, APP_KEY);
+		isBaiduPushStarting = true;
+		//打开调试模式
+		PushSettings.enableDebugMode(getApplicationContext(), true);
 	}
 	
 	@Override
@@ -224,5 +337,20 @@ public class BackgoundService extends Service {
 		mNotifyMgr.notify(BACK_GROUND_NOTIFICATION_ID, mBuilder.build(
 				));                                                                     
 		//Toast.makeText(arg0, msg.getMessage(), Toast.LENGTH_SHORT).show();
+	}
+	
+	private void notifMessage(Context context,CharSequence ticker, CharSequence text, Bitmap bitmap) {
+		NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(context);
+		mBuilder.setDefaults(NotificationCompat.DEFAULT_ALL);
+		mBuilder.setTicker(ticker);
+		mBuilder.setSmallIcon(R.drawable.ic_launcher);
+		mBuilder.setLargeIcon(bitmap);
+		mBuilder.setContentTitle(ticker);
+		mBuilder.setContentText(text);
+		NotificationManager mNotifyMgr =  
+		        (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+		// Builds the notification and issues it.
+		mNotifyMgr.notify(i++, mBuilder.build(
+				));    
 	}
 }
